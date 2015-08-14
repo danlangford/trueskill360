@@ -1,10 +1,10 @@
 import trueskill
 from trueskill import TrueSkill, Rating
-from flask import request
-from flask.ext.api import FlaskAPI, status, exceptions
+from flask import Flask, request, jsonify
+from flask_swagger import swagger
 
 # global FLASK setup
-app = FlaskAPI(__name__)
+app = Flask(__name__, static_url_path='')
 app.config['DEBUG'] = True
 
 # global TRUESKILL setup
@@ -12,6 +12,33 @@ trueskill.setup(backend='mpmath')
 
 # Note: We don't need to call run() since our application is embedded within
 # the App Engine WSGI application server.
+
+class InvalidAPIUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
+@app.route('/')
+def root():
+    return app.send_static_file('index.html')
+
+@app.route("/spec")
+def spec():
+    swag = swagger(app)
+    swag['info']['version'] = 'v1'
+    swag['info']['title'] = 'trueskill360'
+    return jsonify(swag)
 
 @app.route('/test')
 def hello():
@@ -92,36 +119,81 @@ def page_not_found(e):
     """Return a custom 404 error."""
     return 'Sorry, nothing at this URL.', 404
 
+@app.errorhandler(InvalidAPIUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
-@app.route('/api/v1/quality/1vs1', methods=['GET','POST'])
+@app.route('/api/v1/quality/1vs1', methods=['POST'])
 def quality_1vs1():
     """
-    hello <b>world</b>
-    ### i like cheese
-    \n
-    any way to ` make ` a new line?
-    :return:
+    test the quality of a head-to-head matchup
+    ---
+    tags:
+      - 1vs1
+    parameters:
+      - in: body
+        name: body
+        description: two players and their current trueskill360 info
+        schema:
+          type: object
+          example: |
+            {
+                "alice": {
+                    "mu": 20.604168307008482,
+                    "sigma": 7.17147580700922
+                },
+                "bob": {
+                    "mu": 29.39583169299151,
+                    "sigma": 7.17147580700922
+                }
+            }
+
+    responses:
+      201:
+        description: your payload with quality property added
+      400:
+        description: bad request most commonly from not sending exactly 2 players or not having their names be unique
+
     """
-    if request.method=='GET':
-        raise ExamplePayload(example={'alice':{},'bob':{}})
     players, names, _ = get_1vs1_players()
     quality = trueskill.quality_1vs1(players[names[0]], players[names[1]])
-    return {'quality':quality}
+    return jsonify({names[0]:quality_json(players[names[0]]), names[1]:quality_json(players[names[1]]), 'quality':quality})
 
-@app.route('/api/v1/rate/1vs1', methods=['GET','POST'])
+@app.route('/api/v1/rate/1vs1', methods=['POST'])
 def rate_1vs1():
-    if request.method=='GET':
-        raise ExamplePayload(example={
-            "bob": {
-                "mu": 20.604168307008482,
-                "sigma": 7.17147580700922,
-                "result": "win",
-            },
-            "alice": {
-                "mu": 29.39583169299151,
-                "sigma": 7.17147580700922
+    """
+    rate players as result of head-to-head matchup
+    ---
+    tags:
+      - 1vs1
+    parameters:
+      - in: body
+        name: body
+        description: two players and their current trueskill360 info
+        schema:
+          type: object
+          example: |
+            {
+                "alice": {
+                    "mu": 20.604168307008482,
+                    "sigma": 7.17147580700922,
+                    "result": "win"
+                },
+                "bob": {
+                    "mu": 29.39583169299151,
+                    "sigma": 7.17147580700922
+                }
             }
-        })
+
+    responses:
+      201:
+        description: the two players with new rating info
+      400:
+        description: bad request most commonly from not sending exactly 2 players or not having their names be unique
+
+    """
     players, names, results = get_1vs1_players()
     p0, p1 = players[names[0]], players[names[1]]
     drawn = results[0] is results[1]
@@ -134,19 +206,19 @@ def rate_1vs1():
         elif maybe_win(results[1]):
             win_p, win_name, lose_p, lose_name = p1, names[1], p0, names[0]
         else:
-            raise exceptions.ParseError(detail='cannot parse results (win/lose/draw)')
+            raise InvalidAPIUsage('cannot parse results (win/lose/draw)', status_code=400)
 
     win_p, lose_p = trueskill.rate_1vs1(win_p, lose_p, drawn=drawn)
     (p0, p1) = (win_p, lose_p) if names[0] is win_name else (lose_p,win_p)
-    return {names[0]:rating_json(p0,results[0]), names[1]:rating_json(p1, results[1])}
+    return jsonify({names[0]:rate_json(p0,results[0]), names[1]:rate_json(p1, results[1])})
 
 def get_1vs1_players():
-    players = request.data
+    players = request.get_json()
     names = players.keys()
     if len(names) is not 2:
-        raise exceptions.ParseError(detail='request must contain exactly 2 players')
+        raise InvalidAPIUsage('request must contain exactly 2 players', status_code=400)
     if names[0] is names[1]:
-        raise exceptions.ParseError(detail='player names/ids must be distinquishable')
+        raise InvalidAPIUsage('player names/ids must be distinquishable', status_code=400)
 
     results = []
 
@@ -165,7 +237,7 @@ def maybe_win(r):
     """
     return str(r).lower() in ['1', 'true', 'win', 'winner']
 
-def rating_json(rating, result):
+def quality_json(rating):
     """
     Convert a Rating into something more JSON serializeable, includes 'exposure' data
     :type rating: Rating
@@ -174,18 +246,27 @@ def rating_json(rating, result):
     :rtype: dict
     :return: dict
     """
+
+    return {'mu':rating.mu,
+            'sigma':rating.sigma,
+            'exposure':trueskill.expose(rating)}
+
+def rate_json(rating, result):
+    """
+    Convert a Rating into something more JSON serializeable, includes 'exposure' data
+    :type rating: Rating
+    :param rating: the rating to convert
+    :param result: the result sent in initial payload
+    :rtype: dict
+    :return: dict
+    """
+
     return {'mu':rating.mu,
             'sigma':rating.sigma,
             'exposure':trueskill.expose(rating),
             'result': result}
 
-class ExamplePayload(exceptions.APIException):
-    status_code = 299
-    detail = 'Example Payload.'
-    def __init__(self, example=None):
-        if example is not None:
-            self.detail = {'example payload':example}
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
