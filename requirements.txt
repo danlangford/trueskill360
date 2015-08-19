@@ -9,3 +9,8 @@ flask-swagger
 
 trueskill
 mpmath
+
+requests
+requests_cache
+
+keen
