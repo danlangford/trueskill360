@@ -28,11 +28,13 @@ def doit():
         {'tournament':{'url':'season1', 'subdomain':'hearthside'}},
         {'tournament':{'url':'season2', 'subdomain':'hearthside'}},
         {'tournament':{'url':'season3', 'subdomain':'hearthside'}},
-        {'tournament':{'url':'HSCupA', 'subdomain':'saltlakegamingcon'}},
-        {'tournament':{'url':'HSCupB', 'subdomain':'saltlakegamingcon'}},
-        {'tournament':{'url':'HSCupC', 'subdomain':'saltlakegamingcon'}},
-        {'tournament':{'url':'HSCupD', 'subdomain':'saltlakegamingcon'}},
-        {'tournament':{'url':'HSCup', 'subdomain':'saltlakegamingcon'}},
+        {'tournament':{'url':'HSCupA', 'subdomain':'hearthside'}},
+        {'tournament':{'url':'HSCupB', 'subdomain':'hearthside'}},
+        {'tournament':{'url':'HSCupC', 'subdomain':'hearthside'}},
+        {'tournament':{'url':'HSCupD', 'subdomain':'hearthside'}},
+        {'tournament':{'url':'HSCup', 'subdomain':'hearthside'}},
+        {'tournament':{'url':'season4open', 'subdomain':'hearthside'}},
+        {'tournament':{'url':'season4heroic', 'subdomain':'hearthside'}},
     ]
 
     for tournament in tournaments:
@@ -87,43 +89,47 @@ def doit():
                     all_players_by_name[loser['name']].get('rating',{}).get('exposure',0) - new_ratings[loser['name']]['exposure'],
                     all_players_by_name[loser['name']].get('rating',{}).get('mu',25)-new_ratings[loser['name']]['mu'],
                     )
-                keen_client.add_events({'match5': [{
-                    'started_at':m['started_at'],
-                    'host': subdomain,
-                    'url': url,
-                    'match_ident': ident,
-                    'round': round,
-                    'did_win': 1,
-                    'name': winner['name'],
-                    'opponent': loser['name'],
-                    'rating': new_ratings[winner['name']],
-                    'delta': {
-                        'mu':new_ratings[winner['name']]['mu'] - all_players_by_name[winner['name']].get('rating',{}).get('mu',25),
-                        'sigma':new_ratings[winner['name']]['mu'] - all_players_by_name[winner['name']].get('rating',{}).get('sigma',8.333),
-                        'exposure':new_ratings[winner['name']]['exposure'] - all_players_by_name[winner['name']].get('rating',{}).get('exposure',0),
-                    },
-                }, {
-                    'started_at':m['started_at'],
-                    'host': subdomain,
-                    'url': url,
-                    'match_ident': ident,
-                    'round': round,
-                    'did_win': 0,
-                    'name': loser['name'],
-                    'opponent': winner['name'],
-                    'rating': new_ratings[loser['name']],
-                    'delta': {
-                        'mu':new_ratings[loser['name']]['mu'] - all_players_by_name[loser['name']].get('rating',{}).get('mu',25),
-                        'sigma':new_ratings[loser['name']]['mu'] - all_players_by_name[loser['name']].get('rating',{}).get('sigma',8.333),
-                        'exposure':new_ratings[loser['name']]['exposure'] - all_players_by_name[loser['name']].get('rating',{}).get('exposure',0),
-                    },
-                }]})
+                # keen_client.add_events({'match5': [{
+                #     'started_at':m['started_at'],
+                #     'host': subdomain,
+                #     'url': url,
+                #     'match_ident': ident,
+                #     'round': round,
+                #     'did_win': 1,
+                #     'name': winner['name'],
+                #     'opponent': loser['name'],
+                #     'rating': new_ratings[winner['name']],
+                #     'delta': {
+                #         'mu':new_ratings[winner['name']]['mu'] - all_players_by_name[winner['name']].get('rating',{}).get('mu',25),
+                #         'sigma':new_ratings[winner['name']]['mu'] - all_players_by_name[winner['name']].get('rating',{}).get('sigma',8.333),
+                #         'exposure':new_ratings[winner['name']]['exposure'] - all_players_by_name[winner['name']].get('rating',{}).get('exposure',0),
+                #     },
+                # }, {
+                #     'started_at':m['started_at'],
+                #     'host': subdomain,
+                #     'url': url,
+                #     'match_ident': ident,
+                #     'round': round,
+                #     'did_win': 0,
+                #     'name': loser['name'],
+                #     'opponent': winner['name'],
+                #     'rating': new_ratings[loser['name']],
+                #     'delta': {
+                #         'mu':new_ratings[loser['name']]['mu'] - all_players_by_name[loser['name']].get('rating',{}).get('mu',25),
+                #         'sigma':new_ratings[loser['name']]['mu'] - all_players_by_name[loser['name']].get('rating',{}).get('sigma',8.333),
+                #         'exposure':new_ratings[loser['name']]['exposure'] - all_players_by_name[loser['name']].get('rating',{}).get('exposure',0),
+                #     },
+                # }]})
 
                 all_players_by_name[winner['name']]['rating'] = new_ratings[winner['name']]
                 all_players_by_name[loser['name']]['rating'] = new_ratings[loser['name']]
 
 
         print '\n### LEADERBOARD AFTER %s %s\n' % (subdomain, url)
+        bad_players = { k: v for (k,v) in all_players_by_name.iteritems() if 'exposure' not in v['rating']}
+        for b_p in bad_players:
+            del all_players_by_name[b_p]
+
         sorted_names = sorted(all_players_by_name, key=lambda x: all_players_by_name[x]['rating']['exposure'], reverse=True)
 
         i = 0
