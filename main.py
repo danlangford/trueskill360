@@ -81,7 +81,7 @@ def test():
     t = TrueSkill(backend='mpmath')
 
     def new_repr(self):
-        return '(mu=%.3f, sigma=%.3f, exposure=%.3f)' % (self.mu, self.sigma, t.expose(self))
+        return '(mu={:.3f}, sigma={:.3f}, exposure={:.3f})'.format(self.mu, self.sigma, t.expose(self))
     Rating.__repr__ = new_repr
 
     # pre-match we build the teams and players
@@ -115,7 +115,7 @@ def test():
     diffmu1 = teams[1]['bob'].mu - diffmu1
     diffexposure1 = teams[1]['bob'].exposure - diffexposure1
 
-    print 'after first match the mu diff is {} and the exposure diff is {}'.format(diffmu1,diffexposure1)
+    print 'after first match the mu diff is {mu} and the exposure diff is {exp}'.format(mu=diffmu1, exp=diffexposure1)
 
     for _ in xrange(1000):
         teams = [teams[1],teams[0]]
@@ -131,7 +131,7 @@ def test():
     diffmu2 = teams[1]['bob'].mu - diffmu2
     diffexposure2 = teams[1]['bob'].exposure - diffexposure2
 
-    print 'after ~1,000 matches the mu diff is {} and the exposure diff is {}'.format(diffmu2,diffexposure2)
+    print 'after ~1,000 matches the mu diff is {mu} and the exposure diff is {exp}'.format(mu=diffmu2, exp=diffexposure2)
 
 
     print 'quality={}'.format(t.quality(teams))
