@@ -1,9 +1,10 @@
 # trueskill360
 
-[![Join the chat at https://gitter.im/danlangford/trueskill360](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/danlangford/trueskill360?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://travis-ci.org/danlangford/trueskill360.svg?branch=master)](https://travis-ci.org/danlangford/trueskill360)
 [![Requirements Status](https://requires.io/github/danlangford/trueskill360/requirements.svg?branch=master)](https://requires.io/github/danlangford/trueskill360/requirements/?branch=master)
 [![Code Issues](https://www.quantifiedcode.com/api/v1/project/28c6e47bac3740cf9bad933ea01b5d1a/badge.svg)](https://www.quantifiedcode.com/app/project/28c6e47bac3740cf9bad933ea01b5d1a)
 [![Code Climate](https://codeclimate.com/github/danlangford/trueskill360/badges/gpa.svg)](https://codeclimate.com/github/danlangford/trueskill360)
+[![Join the chat at https://gitter.im/danlangford/trueskill360](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/danlangford/trueskill360?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 a web service providing trueskill-style rankings
 
